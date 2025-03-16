@@ -14,6 +14,9 @@ screenshots/
 *.jpg
 *.jpeg
 
+# Prevent committing scraped data
+data/
+
 # Logs
 logs
 *.log

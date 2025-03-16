@@ -1,7 +1,7 @@
+import fs from 'fs';
 import { initializeBrowser } from './initializeBrowser.js';
 import { configurePage } from './configurePage.js';
-import fs from 'fs';
-import path from 'path';
+import { takeScreenshot } from '../helpers/screenshotHelper.js';
 
 const detectionSites = [
   { name: 'Sannysoft', url: 'https://bot.sannysoft.com/' },
@@ -34,14 +34,7 @@ export const testDetection = async () => {
 
       await page.goto(site.url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const screenshotPath = path.join(
-        screenshotsDir,
-        `detection_test_${site.name}_${timestamp}.png`
-      );
-
-      await page.screenshot({ path: screenshotPath });
-      console.log(`✅ Screenshot securely saved: ${screenshotPath}`);
+      await takeScreenshot(page, `detection_test_${site.name}`);
     }
   } catch (error) {
     console.error(
