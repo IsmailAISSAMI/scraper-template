@@ -7,7 +7,7 @@ const main = async () => {
 
   await scrapeAvitoCars();
   //await executeNavigation();
-  await testDetection();
+  //await testDetection();
 
   console.log('✅ Script execution completed.');
 };
