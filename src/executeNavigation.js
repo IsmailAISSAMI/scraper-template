@@ -1,6 +1,6 @@
 import { initializeBrowser } from './initializeBrowser.js';
 import { configurePage } from './configurePage.js';
-import { config } from './config.js';
+import { config } from '../config.js';
 
 /**
  * Securely navigates to a specified URL using Puppeteer with stealth configurations.
