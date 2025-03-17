@@ -32,7 +32,7 @@ export const scrapeAvitoCars = async () => {
       console.log('✅ No cookie consent popup detected, proceeding...');
     }
 
-    const cars = await page.evaluate(() => {
+    let cars = await page.evaluate(() => {
       const listings = [];
       document
         .querySelectorAll('.sc-1nre5ec-1.crKvIr.listing a.sc-1jge648-0')
@@ -84,6 +84,11 @@ export const scrapeAvitoCars = async () => {
         });
       return listings;
     });
+
+    // Removing duplicate
+    cars = Array.from(new Set(cars.map((car) => JSON.stringify(car)))).map(
+      (str) => JSON.parse(str)
+    );
 
     console.log(`✅ Extracted ${cars.length} cars from Avito.ma`);
 

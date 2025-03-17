@@ -19,4 +19,5 @@ export const takeScreenshot = async (page, name) => {
   await page.screenshot({ path: screenshotPath, fullPage: true });
 
   console.log(`📸 Screenshot saved: ${screenshotPath}`);
+  return filePath;
 };
