@@ -25,3 +25,12 @@ export const saveData = async (filenamePrefix, data) => {
     throw error;
   }
 };
+
+/**
+ * Removes duplicate car listings based on unique links
+ * @param {Array} cars - Car data array
+ * @returns {Array} - Deduplicated car data
+ */
+export const removeDuplicates = (cars) => {
+  return Array.from(new Map(cars.map((car) => [car.link, car])).values());
+};
