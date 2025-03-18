@@ -9,4 +9,6 @@ export const config = {
   viewportWidth: Number(process.env.VIEWPORT_WIDTH) || 1280,
   viewportHeight: Number(process.env.VIEWPORT_HEIGHT) || 800,
   timezone: process.env.TIMEZONE || 'America/New_York',
+
+  minCarYear: Number(process.env.MIN_CAR_YEAR) || 1980,
 };

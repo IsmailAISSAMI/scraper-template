@@ -1,6 +1,9 @@
 import { initializeBrowser } from './initializeBrowser.js';
 import { configurePage } from './configurePage.js';
+
 import { config } from '../config.js';
+import { selectors } from '../selectors.js';
+
 import { takeScreenshot } from '../helpers/screenshotHelper.js';
 import { saveData, removeDuplicates } from '../helpers/dataHelper.js';
 import { handleCookieConsent } from '../helpers/CookieConsentHelper.js';
@@ -52,28 +55,69 @@ export const scrapeAvitoCars = async () => {
  * @returns {Promise<Array>} - Extracted car data
  */
 const extractCarData = async (page) => {
-  return await page.evaluate(() => {
-    return [
-      ...document.querySelectorAll(
-        '.sc-1nre5ec-1.crKvIr.listing a.sc-1jge648-0'
-      ),
-    ]
-      .map((ad) => {
-        const getText = (selector) =>
-          ad.querySelector(selector)?.innerText?.trim() || 'N/A';
-        return {
-          title: getText('.sc-1x0vz2r-0.iHApav'),
-          price: getText('.sc-1x0vz2r-0.dJAfqm'),
-          location: getText('.sc-1x0vz2r-0.layWaX'),
-          year: getText('[title="Année-Modèle"] span'),
-          transmission: getText('[title="Boite de vitesses"] span'),
-          fuel: getText('[title="Type de carburant"] span'),
-          image: ad.querySelector('img.sc-bsm2tm-3')?.src || '',
-          link: ad.href.startsWith('http')
-            ? ad.href
-            : `https://www.avito.ma${ad.getAttribute('href')}`,
-        };
-      })
-      .filter((car) => car.title !== 'N/A');
-  });
+  return await page.evaluate((selectors) => {
+    try {
+      console.log('🚀 Running extractCarData...');
+
+      // Ensure the container exists before extracting data
+      const container = document.querySelectorAll(selectors.listingContainer);
+      if (!container.length) {
+        console.error('❌ ERROR: No listings found! Check selectors.');
+        return [];
+      }
+
+      const getText = (ad, selector) => {
+        try {
+          return ad.querySelector(selector)?.innerText?.trim() || null;
+        } catch (err) {
+          console.error(`❌ Error extracting: ${selector}`, err);
+          return null;
+        }
+      };
+
+      const formatPrice = (price) => {
+        if (!price || price.includes('Prix non spécifié')) return null;
+        const numericPrice = price.replace(/[^\d]/g, '');
+        return numericPrice ? Number(numericPrice) : null;
+      };
+
+      const validateYear = (year) => {
+        if (!year || isNaN(year)) return null;
+        const numYear = Number(year);
+        const currentYear = new Date().getFullYear();
+        return numYear >= 1900 && numYear <= currentYear ? numYear : null;
+      };
+
+      const normalizeField = (value) => {
+        const invalidValues = ['N/A', '-', 'Unknown', 'Indisponible', ''];
+        return invalidValues.includes(value) ? null : value;
+      };
+
+      const cars = [...container]
+        .map((ad) => {
+          return {
+            title: getText(ad, selectors.title),
+            price: formatPrice(getText(ad, selectors.price)),
+            location: getText(ad, selectors.location)
+              .replace("Voitures d'occasion dans ", '')
+              .replace('Voitures de location dans ', '')
+              .trim(),
+            year: validateYear(getText(ad, selectors.year)),
+            transmission: normalizeField(getText(ad, selectors.transmission)),
+            fuel: normalizeField(getText(ad, selectors.fuel)),
+            image: ad.querySelector(selectors.image)?.src || '',
+            link: ad.href.startsWith('http')
+              ? ad.href
+              : `https://www.avito.ma${ad.getAttribute('href')}`,
+          };
+        })
+        .filter((car) => car.title !== null);
+
+      console.log('📌 Extracted Cars:', cars);
+      return cars;
+    } catch (error) {
+      console.error('❌ Error extracting car data', error);
+      return [];
+    }
+  }, selectors);
 };
