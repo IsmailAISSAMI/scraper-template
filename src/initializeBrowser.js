@@ -37,9 +37,6 @@ export const initializeBrowser = async () => {
       // PRIVACY & DATA PROTECTION
       '--password-store=basic',
       '--use-mock-keychain',
-
-      // OPTIONAL: Only if debugging is actively required and secured
-      //'--remote-debugging-port=9222',
     ],
     defaultViewport: null,
   });

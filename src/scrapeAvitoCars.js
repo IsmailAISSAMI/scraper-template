@@ -51,74 +51,114 @@ export const scrapeAvitoCars = async () => {
 };
 
 /**
- * Extracts car listing data from the page
- * @param {object} page - Puppeteer page instance
- * @returns {Promise<Array>} - Extracted car data
+ * Extracts car data from multiple pages and stores it in a single variable.
+ * @param {object} page - Puppeteer page instance.
+ * @returns {Promise<Array>} - Extracted car data from all pages.
  */
-const extractCarData = async (page) => {
-  return await page.evaluate((selectors) => {
-    try {
-      console.log('🚀 Running extractCarData...');
+export const extractCarData = async (page) => {
+  let allCars = [];
 
-      // Ensure the container exists before extracting data
-      const container = document.querySelectorAll(selectors.listingContainer);
-      if (!container.length) {
-        console.error('❌ ERROR: No listings found! Check selectors.');
-        return [];
+  console.log(
+    `🚀 Scraping car listings from pages 1 to ${config.paginationLimit}...`
+  );
+
+  for (
+    let currentPage = 1;
+    currentPage <= config.paginationLimit;
+    currentPage++
+  ) {
+    const url =
+      currentPage === 1
+        ? config.targetUrl
+        : `${config.targetUrl}?o=${currentPage}`;
+    console.log(`📌 Navigating to Page ${currentPage}: ${url}`);
+
+    try {
+      await page.goto(url, {
+        waitUntil: 'networkidle2',
+        timeout: config.navigationTimeout,
+      });
+
+      const cars = await page.evaluate((selectors) => {
+        try {
+          console.log('🚀 Running extractCarData...');
+
+          const container = document.querySelectorAll(
+            selectors.listingContainer
+          );
+          if (!container.length) {
+            console.warn('⚠️ No listings found on this page. Stopping...');
+            return [];
+          }
+
+          const getText = (ad, selector) => {
+            try {
+              return ad.querySelector(selector)?.innerText?.trim() || null;
+            } catch (err) {
+              console.error(`❌ Error extracting: ${selector}`, err);
+              return null;
+            }
+          };
+
+          const formatPrice = (price) => {
+            if (!price || price.includes('Prix non spécifié')) return null;
+            const numericPrice = price.replace(/[^\d]/g, '');
+            return numericPrice ? Number(numericPrice) : null;
+          };
+
+          const validateYear = (year) => {
+            if (!year || isNaN(year)) return null;
+            const numYear = Number(year);
+            const currentYear = new Date().getFullYear();
+            return numYear >= 1900 && numYear <= currentYear ? numYear : null;
+          };
+
+          const normalizeField = (value) => {
+            const invalidValues = ['N/A', '-', 'Unknown', 'Indisponible', ''];
+            return invalidValues.includes(value) ? null : value;
+          };
+
+          return [...container]
+            .map((ad) => ({
+              title: getText(ad, selectors.title),
+              price: formatPrice(getText(ad, selectors.price)),
+              location: getText(ad, selectors.location)
+                .replace("Voitures d'occasion dans ", '')
+                .replace('Voitures de location dans ', '')
+                .trim(),
+              year: validateYear(getText(ad, selectors.year)),
+              transmission: normalizeField(getText(ad, selectors.transmission)),
+              fuel: normalizeField(getText(ad, selectors.fuel)),
+              image: ad.querySelector(selectors.image)?.src || '',
+              link: ad.href.startsWith('http')
+                ? ad.href
+                : `https://www.avito.ma${ad.getAttribute('href')}`,
+            }))
+            .filter((car) => car.title !== null);
+        } catch (error) {
+          console.error('❌ Error extracting car data', error);
+          return [];
+        }
+      }, selectors);
+
+      if (cars.length === 0) {
+        console.warn(
+          `⚠️ No more listings found on page ${currentPage}, stopping pagination.`
+        );
+        break;
       }
 
-      const getText = (ad, selector) => {
-        try {
-          return ad.querySelector(selector)?.innerText?.trim() || null;
-        } catch (err) {
-          console.error(`❌ Error extracting: ${selector}`, err);
-          return null;
-        }
-      };
+      console.log(`✅ Extracted ${cars.length} cars from Page ${currentPage}`);
+      allCars.push(...cars);
 
-      const formatPrice = (price) => {
-        if (!price || price.includes('Prix non spécifié')) return null;
-        const numericPrice = price.replace(/[^\d]/g, '');
-        return numericPrice ? Number(numericPrice) : null;
-      };
-
-      const validateYear = (year) => {
-        if (!year || isNaN(year)) return null;
-        const numYear = Number(year);
-        const currentYear = new Date().getFullYear();
-        return numYear >= 1900 && numYear <= currentYear ? numYear : null;
-      };
-
-      const normalizeField = (value) => {
-        const invalidValues = ['N/A', '-', 'Unknown', 'Indisponible', ''];
-        return invalidValues.includes(value) ? null : value;
-      };
-
-      const cars = [...container]
-        .map((ad) => {
-          return {
-            title: getText(ad, selectors.title),
-            price: formatPrice(getText(ad, selectors.price)),
-            location: getText(ad, selectors.location)
-              .replace("Voitures d'occasion dans ", '')
-              .replace('Voitures de location dans ', '')
-              .trim(),
-            year: validateYear(getText(ad, selectors.year)),
-            transmission: normalizeField(getText(ad, selectors.transmission)),
-            fuel: normalizeField(getText(ad, selectors.fuel)),
-            image: ad.querySelector(selectors.image)?.src || '',
-            link: ad.href.startsWith('http')
-              ? ad.href
-              : `https://www.avito.ma${ad.getAttribute('href')}`,
-          };
-        })
-        .filter((car) => car.title !== null);
-
-      console.log('📌 Extracted Cars:', cars);
-      return cars;
+      await randomDelay(20000, 30000);
     } catch (error) {
-      console.error('❌ Error extracting car data', error);
-      return [];
+      console.error(`❌ Error scraping Page ${currentPage}:`, error);
+      break;
     }
-  }, selectors);
+  }
+
+  console.log(`📦 Total cars extracted: ${allCars.length}`);
+  await saveData('avito_cars', allCars);
+  return allCars;
 };

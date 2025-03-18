@@ -14,4 +14,5 @@ export const config = {
 
   cookiePopupTimeout: 2000,
   cookiePostClickDelay: 500,
+  paginationLimit: 5,
 };
