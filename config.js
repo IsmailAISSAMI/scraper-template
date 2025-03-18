@@ -11,4 +11,7 @@ export const config = {
   timezone: process.env.TIMEZONE || 'America/New_York',
 
   minCarYear: Number(process.env.MIN_CAR_YEAR) || 1980,
+
+  cookiePopupTimeout: 2000,
+  cookiePostClickDelay: 500,
 };

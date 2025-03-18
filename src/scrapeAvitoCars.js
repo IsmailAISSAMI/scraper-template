@@ -7,6 +7,7 @@ import { selectors } from '../selectors.js';
 import { takeScreenshot } from '../helpers/screenshotHelper.js';
 import { saveData, removeDuplicates } from '../helpers/dataHelper.js';
 import { handleCookieConsent } from '../helpers/CookieConsentHelper.js';
+import { randomDelay } from '../helpers/delayHelper.js';
 
 /**
  * Scrapes car listings from Avito.ma
