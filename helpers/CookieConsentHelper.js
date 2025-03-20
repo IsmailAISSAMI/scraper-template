@@ -3,20 +3,33 @@
  * @param {object} page - Puppeteer page instance
  */
 import { config } from '../config.js';
+import { selectors } from '../selectors.js';
+import { randomDelay } from '../helpers/delayHelper.js';
 
 export const handleCookieConsent = async (page) => {
   try {
-    await page.waitForSelector('button[mode="primary"]', {
-      timeout: config.cookiePopupTimeout,
-    });
-    console.log('🛑 Cookie consent popup detected. Accepting...');
+    let buttonFound = false;
 
-    await page.evaluate(() => {
-      document.querySelector('button[mode="primary"]')?.click();
-    });
+    for (const selector of selectors.consentButtonSelectors) {
+      const button = await page.$(selector);
+      if (button) {
+        console.log(
+          `🛑 Cookie consent popup detected. Accepting (selector: ${selector})...`
+        );
+        await button.evaluate((b) => b.click());
+        await randomDelay(config.minDelay || 1000, config.maxDelay || 3000); //await page.waitForTimeout(config.cookiePostClickDelay);
+        buttonFound = true;
+        break;
+      }
+    }
 
-    await page.waitForTimeout(config.cookiePostClickDelay);
+    if (!buttonFound) {
+      console.log('✅ No cookie consent popup detected, proceeding...');
+    }
   } catch (error) {
-    console.log('✅ No cookie consent popup detected, proceeding...');
+    console.error(
+      '⚠️ [CookieConsentHelper.js] No cookie consent popup detected or handling failed:\n',
+      error
+    );
   }
 };

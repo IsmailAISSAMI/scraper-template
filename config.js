@@ -12,7 +12,9 @@ export const config = {
 
   minCarYear: Number(process.env.MIN_CAR_YEAR) || 1980,
 
-  cookiePopupTimeout: 2000,
+  cookiePopupMinDelay: 1500,
+  cookiePopupMaxDelay: 3000,
+
   cookiePostClickDelay: 500,
-  paginationLimit: 5,
+  paginationLimit: 2,
 };

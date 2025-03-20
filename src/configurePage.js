@@ -52,11 +52,12 @@ export const configurePage = async (browser) => {
       };
 
       // Disable WebRTC to prevent IP leaks
-      Object.defineProperty(window, 'RTCPeerConnection', {
-        get: () => undefined,
-      });
-      Object.defineProperty(window, 'RTCDataChannel', {
-        get: () => undefined,
+      [
+        'RTCPeerConnection',
+        'RTCDataChannel',
+        'webkitRTCPeerConnection',
+      ].forEach((prop) => {
+        Object.defineProperty(window, prop, { get: () => undefined });
       });
 
       // Plugins spoofing
@@ -70,11 +71,15 @@ export const configurePage = async (browser) => {
       });
     });
 
-    console.log('✅ Puppeteer page configured securely.');
+    console.log(
+      `✅ [configurePage.js] Puppeteer page configured securely with User-Agent: ${userAgent}`
+    );
   } catch (error) {
     console.error(
-      `❌ Page configuration failed: ${error.message}\nStack Trace: ${error.stack}`
+      `❌ [configurePage.js] Failed to configure page: ${error.message}`,
+      error
     );
+
     throw error;
   }
 

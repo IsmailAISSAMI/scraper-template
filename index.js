@@ -5,9 +5,9 @@ import { scrapeAvitoCars } from './src/scrapeAvitoCars.js';
 const main = async () => {
   console.log('🚀 Starting Puppeteer script...');
 
-  await scrapeAvitoCars();
+  //await scrapeAvitoCars();
   //await executeNavigation();
-  //await testDetection();
+  await testDetection();
 
   console.log('✅ Script execution completed.');
 };
