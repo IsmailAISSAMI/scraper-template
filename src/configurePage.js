@@ -46,9 +46,9 @@ export const configurePage = async (browser) => {
       // WebGL Vendor spoofing
       const originalGetParameter = WebGLRenderingContext.prototype.getParameter;
       WebGLRenderingContext.prototype.getParameter = function (parameter) {
-        if (parameter === 37445) return 'Intel Inc.';
-        if (parameter === 37446) return 'Intel Iris OpenGL Engine';
-        return originalGetParameter(parameter);
+        if (parameter === 37445) return 'NVIDIA Corporation'; // Fake Vendor
+        if (parameter === 37446) return 'NVIDIA GeForce GTX 1080'; // Fake Renderer
+        return originalGetParameter.call(this, parameter);
       };
 
       // Disable WebRTC to prevent IP leaks
@@ -62,13 +62,45 @@ export const configurePage = async (browser) => {
 
       // Plugins spoofing
       Object.defineProperty(navigator, 'plugins', {
-        get: () => [1, 2, 3, 4, 5],
+        get: () => new Array(5).fill(null),
       });
 
       // MimeTypes spoofing
       Object.defineProperty(navigator, 'mimeTypes', {
-        get: () => [1, 2, 3, 4, 5],
+        get: () => new Array(5).fill(null),
       });
+
+      // Web Worker spoofing to prevent "hasInconsistentWorkerValues"
+      const originalWorker = window.Worker;
+      class FakeWorker extends originalWorker {
+        constructor(stringUrl) {
+          if (stringUrl.startsWith('data:')) {
+            super(stringUrl);
+          } else {
+            throw new Error('Not allowed');
+          }
+        }
+      }
+      Object.defineProperty(window, 'Worker', { value: FakeWorker });
+
+      // Shared Worker spoofing
+      const originalSharedWorker = window.SharedWorker;
+      class FakeSharedWorker extends originalSharedWorker {
+        constructor(stringUrl) {
+          if (stringUrl.startsWith('data:')) {
+            super(stringUrl);
+          } else {
+            throw new Error('Not allowed');
+          }
+        }
+      }
+      Object.defineProperty(window, 'SharedWorker', {
+        value: FakeSharedWorker,
+      });
+
+      // Fix Inconsistent Worker Values
+      Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 }); // Spoof device RAM
+      Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 }); // Fake CPU cores
     });
 
     console.log(

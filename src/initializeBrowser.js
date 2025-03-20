@@ -12,9 +12,11 @@ export const initializeBrowser = async () => {
   return puppeteer.launch({
     headless: config.headless,
     args: [
+      '--incognito',
+
       // SECURITY & SANDBOXING
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
+      //'--no-sandbox',
+      //'--disable-setuid-sandbox',
 
       // STEALTH & ANTI-DETECTION
       '--disable-blink-features=AutomationControlled',
