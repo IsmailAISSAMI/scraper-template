@@ -10,8 +10,7 @@ import { handleCookieConsent } from '../helpers/CookieConsentHelper.js';
 import { randomDelay } from '../helpers/delayHelper.js';
 
 /**
- * Scrapes car listings from Avito.ma
- * @returns {Promise<void>}
+ * Entry point: scrape all car listings from Avito.ma
  */
 export const scrapeAvitoCars = async () => {
   let browser;
@@ -20,28 +19,20 @@ export const scrapeAvitoCars = async () => {
     browser = await initializeBrowser();
     const page = await configurePage(browser);
 
-    console.log(`🚗 Navigating to Avito.ma: ${config.targetUrl}`);
-    await page.goto(config.targetUrl, {
-      waitUntil: 'networkidle2',
-      timeout: config.navigationTimeout,
-    });
-
+    await openStartPage(page);
     await handleCookieConsent(page);
 
-    let cars = await extractCarData(page);
-    cars = removeDuplicates(cars);
+    const cars = await runPagination(page);
+    const uniqueCars = removeDuplicates(cars);
 
-    console.log(`✅ Extracted ${cars.length} cars from Avito.ma`);
-
-    await saveData('avito_cars', cars);
+    console.log(`✅ Extracted ${uniqueCars.length} unique cars`);
+    await saveData('avito_cars', uniqueCars);
 
     if (config.captureScreenshots) {
       await takeScreenshot(page, 'screenshot');
     }
   } catch (error) {
-    console.error(
-      `❌ Scraping failed: ${error.message}\nStack Trace: ${error.stack}`
-    );
+    console.error(`❌ Scraping failed: ${error.message}\n${error.stack}`);
   } finally {
     if (browser) {
       await browser.close();
@@ -51,27 +42,25 @@ export const scrapeAvitoCars = async () => {
 };
 
 /**
- * Extracts car data from multiple pages and stores it in a single variable.
- * @param {object} page - Puppeteer page instance.
- * @returns {Promise<Array>} - Extracted car data from all pages.
+ * Opens the initial page
  */
-export const extractCarData = async (page) => {
-  let allCars = [];
+const openStartPage = async (page) => {
+  console.log(`🚗 Opening: ${config.targetUrl}`);
+  await page.goto(config.targetUrl, {
+    waitUntil: 'networkidle2',
+    timeout: config.navigationTimeout,
+  });
+};
 
-  console.log(
-    `🚀 Scraping car listings from pages 1 to ${config.paginationLimit}...`
-  );
+/**
+ * Handles multi-page data extraction
+ */
+const runPagination = async (page) => {
+  const allCars = [];
 
-  for (
-    let currentPage = 1;
-    currentPage <= config.paginationLimit;
-    currentPage++
-  ) {
-    const url =
-      currentPage === 1
-        ? config.targetUrl
-        : `${config.targetUrl}?o=${currentPage}`;
-    console.log(`📌 Navigating to Page ${currentPage}: ${url}`);
+  for (let i = 1; i <= config.paginationLimit; i++) {
+    const url = i === 1 ? config.targetUrl : `${config.targetUrl}?o=${i}`;
+    console.log(`📌 Page ${i}: ${url}`);
 
     try {
       await page.goto(url, {
@@ -79,86 +68,77 @@ export const extractCarData = async (page) => {
         timeout: config.navigationTimeout,
       });
 
-      const cars = await page.evaluate((selectors) => {
-        try {
-          console.log('🚀 Running extractCarData...');
-
-          const container = document.querySelectorAll(
-            selectors.listingContainer
-          );
-          if (!container.length) {
-            console.warn('⚠️ No listings found on this page. Stopping...');
-            return [];
-          }
-
-          const getText = (ad, selector) => {
-            try {
-              return ad.querySelector(selector)?.innerText?.trim() || null;
-            } catch (err) {
-              console.error(`❌ Error extracting: ${selector}`, err);
-              return null;
-            }
-          };
-
-          const formatPrice = (price) => {
-            if (!price || price.includes('Prix non spécifié')) return null;
-            const numericPrice = price.replace(/[^\d]/g, '');
-            return numericPrice ? Number(numericPrice) : null;
-          };
-
-          const validateYear = (year) => {
-            if (!year || isNaN(year)) return null;
-            const numYear = Number(year);
-            const currentYear = new Date().getFullYear();
-            return numYear >= 1900 && numYear <= currentYear ? numYear : null;
-          };
-
-          const normalizeField = (value) => {
-            const invalidValues = ['N/A', '-', 'Unknown', 'Indisponible', ''];
-            return invalidValues.includes(value) ? null : value;
-          };
-
-          return [...container]
-            .map((ad) => ({
-              title: getText(ad, selectors.title),
-              price: formatPrice(getText(ad, selectors.price)),
-              location: getText(ad, selectors.location)
-                .replace("Voitures d'occasion dans ", '')
-                .replace('Voitures de location dans ', '')
-                .trim(),
-              year: validateYear(getText(ad, selectors.year)),
-              transmission: normalizeField(getText(ad, selectors.transmission)),
-              fuel: normalizeField(getText(ad, selectors.fuel)),
-              image: ad.querySelector(selectors.image)?.src || '',
-              link: ad.href.startsWith('http')
-                ? ad.href
-                : `https://www.avito.ma${ad.getAttribute('href')}`,
-            }))
-            .filter((car) => car.title !== null);
-        } catch (error) {
-          console.error('❌ Error extracting car data', error);
-          return [];
-        }
-      }, selectors);
-
-      if (cars.length === 0) {
-        console.warn(
-          `⚠️ No more listings found on page ${currentPage}, stopping pagination.`
-        );
+      const carsOnPage = await extractCarsFromDOM(page);
+      if (!carsOnPage.length) {
+        console.warn(`⚠️ No listings on page ${i}. Exiting pagination.`);
         break;
       }
 
-      console.log(`✅ Extracted ${cars.length} cars from Page ${currentPage}`);
-      allCars.push(...cars);
+      console.log(`✅ Found ${carsOnPage.length} cars`);
+      allCars.push(...carsOnPage);
 
       await randomDelay(20000, 30000);
-    } catch (error) {
-      console.error(`❌ Error scraping Page ${currentPage}:`, error);
+    } catch (err) {
+      console.error(`❌ Error on page ${i}: ${err.message}`);
       break;
     }
   }
 
-  console.log(`📦 Total cars extracted: ${allCars.length}`);
-  await saveData('avito_cars', allCars);
+  console.log(`📦 Total cars collected: ${allCars.length}`);
   return allCars;
+};
+
+/**
+ * Executes DOM extraction in the browser context
+ */
+const extractCarsFromDOM = async (page) => {
+  return page.evaluate((selectors) => {
+    const ads = document.querySelectorAll(selectors.listingContainer);
+    if (!ads.length) return [];
+
+    const invalid = ['N/A', '-', 'Unknown', 'Indisponible', ''];
+
+    const parsePrice = (text) => {
+      if (!text || text.includes('Prix non spécifié')) return null;
+      return Number(text.replace(/[^\d]/g, '')) || null;
+    };
+
+    const parseYear = (text) => {
+      const y = Number(text);
+      const now = new Date().getFullYear();
+      return y >= 1900 && y <= now ? y : null;
+    };
+
+    const getText = (el, sel) =>
+      el.querySelector(sel)?.innerText?.trim() || null;
+
+    return Array.from(ads)
+      .map((ad) => {
+        const href = ad.getAttribute('href') || '';
+        const image = ad.querySelector(selectors.image)?.src || '';
+
+        const title = getText(ad, selectors.title);
+        if (!title) return null;
+
+        return {
+          title,
+          price: parsePrice(getText(ad, selectors.price)),
+          location:
+            getText(ad, selectors.location)
+              ?.replace("Voitures d'occasion dans ", '')
+              ?.replace('Voitures de location dans ', '')
+              ?.trim() || null,
+          year: parseYear(getText(ad, selectors.year)),
+          transmission: invalid.includes(getText(ad, selectors.transmission))
+            ? null
+            : getText(ad, selectors.transmission),
+          fuel: invalid.includes(getText(ad, selectors.fuel))
+            ? null
+            : getText(ad, selectors.fuel),
+          image,
+          link: href.startsWith('http') ? href : `https://www.avito.ma${href}`,
+        };
+      })
+      .filter(Boolean);
+  }, selectors);
 };

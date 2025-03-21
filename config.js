@@ -17,4 +17,6 @@ export const config = {
 
   cookiePostClickDelay: 500,
   paginationLimit: 2,
+
+  captureScreenshots: true,
 };

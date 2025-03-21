@@ -16,25 +16,29 @@ export const executeNavigation = async (
   let browser;
 
   try {
+    console.log(`✅ [executeNavigation.js] Initializing browser...`);
+
     browser = await initializeBrowser();
     const page = await configurePage(browser);
 
-    console.log(`🛰️ Navigating securely to: ${url}`);
+    console.log(`🛰️ [executeNavigation.js] Navigating securely to: ${url}`);
 
     await page.goto(url, {
       waitUntil: 'load',
       timeout,
     });
 
-    console.log(`✅ Successfully navigated to ${url}`);
+    console.log(`✅ [executeNavigation.js] Successfully navigated to: ${url}`);
   } catch (error) {
     console.error(
-      `❌ Navigation error: ${error.message}\nStack Trace: ${error.stack}`
+      `❌ [executeNavigation.js] Navigation error: ${error.message}\nStack Trace: ${error.stack}`
     );
   } finally {
     if (browser) {
       await browser.close();
-      console.log('🔻 Browser closed.');
+      console.log(
+        `🔻 [executeNavigation.js] Browser instance securely closed.`
+      );
     }
   }
 };
