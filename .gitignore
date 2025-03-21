@@ -17,6 +17,9 @@ screenshots/
 # Prevent committing scraped data
 data/
 
+# Prevent committing reports
+reports/
+
 # Logs
 logs
 *.log

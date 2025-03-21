@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "report": "node generateReport.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -16,7 +17,10 @@
   "type": "module",
   "description": "A Puppeteer-based web scraper.",
   "dependencies": {
+    "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
+    "glob": "^11.0.1",
+    "pdf-lib": "^1.17.1",
     "puppeteer": "^24.4.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
