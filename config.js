@@ -16,7 +16,7 @@ export const config = {
   cookiePopupMaxDelay: 3000,
 
   cookiePostClickDelay: 500,
-  paginationLimit: 2,
+  paginationLimit: 11,
 
   captureScreenshots: true,
 };
